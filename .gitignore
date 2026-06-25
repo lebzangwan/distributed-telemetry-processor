@@ -1,0 +1,19 @@
+# Ignore local environment secrets 
+**/.env
+
+# User-specific files & IDE configuration
+.vscode/
+.idea/
+*.suo
+*.user
+**/appsettings.json
+**/appsettings.*.json
+
+# Build and Compilation Outputs
+bin/
+obj/
+out/
+app/publish/
+
+# Docker & Local Database Cache
+.dockerignore

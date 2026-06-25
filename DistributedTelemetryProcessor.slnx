@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Telemetry.Consumer/Telemetry.Consumer.csproj" />
+    <Project Path="src/Telemetry.Publisher/Telemetry.Publisher.csproj" />
+    <Project Path="src/Telemetry.Shared/Telemetry.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Telemetry.Tests/Telemetry.Tests.csproj" />
+  </Folder>
+</Solution>

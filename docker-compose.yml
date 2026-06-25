@@ -1,0 +1,67 @@
+services:
+  sql-edge:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: telemetryContainer
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DOCKER_DB_PASSWORD}
+    ports:
+      - "1433:1433"
+    healthcheck: 
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${DOCKER_DB_PASSWORD}", "-Q", "SELECT 1"]
+      interval: 5s 
+      timeout: 3s 
+      retries: 10
+      start_period: 10s
+    volumes:
+      - mssql-data:/var/opt/mssql
+
+  db-initializer:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: dbInitializerContainer
+    volumes:
+      - ./init-db.sh:/app/init-db.sh
+      - ./Database.sql:/app/Database.sql 
+    environment:
+      - DOCKER_DB_PASSWORD=${DOCKER_DB_PASSWORD}
+    entrypoint: /bin/bash /app/init-db.sh
+    depends_on:
+      sql-edge:
+        condition: service_healthy
+
+  publisher:
+    image: telemetry-publisher:local
+    build:
+      context: .
+      dockerfile: src/Telemetry.Publisher/Dockerfile
+    container_name: telemetry-publisher
+    ports:
+      - "5020:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=sql-edge;Database=${DB_NAME};User Id=${DB_USER};Password=${DOCKER_DB_PASSWORD};TrustServerCertificate=True;
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - ASPNETCORE_URLS=http://+:8080
+      - Telemetry__Publisher_HostAddress=http://publisher:8080
+    depends_on:
+      db-initializer:
+        condition: service_completed_successfully
+
+  consumer:
+    image: telemetry-consumer:local
+    build:
+      context: .
+      dockerfile: src/Telemetry.Consumer/Dockerfile
+    container_name: telemetry-consumer
+    ports:
+      - "5021:8080"
+    environment:
+      - PublisherUrl=http://publisher:8080/api/telemetry/next
+      - ConnectionStrings__DefaultConnection=Server=sql-edge;Database=${DB_NAME};User Id=${DB_USER};Password=${DOCKER_DB_PASSWORD};TrustServerCertificate=True;
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - Telemetry__Publisher_HostAddress=http://publisher:8080
+    depends_on:
+      db-initializer:
+        condition: service_completed_successfully
+
+volumes:
+  mssql-data:

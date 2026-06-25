@@ -1,0 +1,4 @@
+@Telemetry.Publisher_HostAddress = http://localhost:5020
+
+GET {{Telemetry.Publisher_HostAddress}}
+Accept: application/json
