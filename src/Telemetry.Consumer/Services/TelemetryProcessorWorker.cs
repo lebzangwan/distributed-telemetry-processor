@@ -16,7 +16,6 @@ public partial class TelemetryProcessorWorker : BackgroundService
     private readonly Channel<SensorReading> _processingChannel;
     private readonly string _publisherUrl;
 
-    // IDE0028 Fix: Simplified dictionary collection initialization expression ([])
     private readonly Dictionary<string, List<double>> _historicalBuffer = [];
 
     public TelemetryProcessorWorker(
@@ -94,11 +93,8 @@ public partial class TelemetryProcessorWorker : BackgroundService
             {
                 var correlationId = Guid.NewGuid().ToString()[..8];
 
-                // CA1873 Fix: Removed direct string logging interpolation execution paths
                 LogCalculationsStarted(correlationId, reading.Id);
 
-                // CA1854 Fix: Using TryGetValue eliminates double-lookup dictionary traversal overhead
-                // IDE0028 Fix: Instantiating fallback empty collections natively via target expressions ([])
                 if (!_historicalBuffer.TryGetValue(reading.SensorType, out var historicalList))
                 {
                     historicalList = [];

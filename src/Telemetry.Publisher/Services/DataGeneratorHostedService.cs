@@ -2,12 +2,11 @@ namespace Telemetry.Publisher.Services;
 
 using Telemetry.Shared.Models;
 
-public class DataGeneratorHostedService : BackgroundService
+public partial class DataGeneratorHostedService : BackgroundService
 {
     private readonly ITelemetryQueueManager _queueManager;
     private readonly ILogger<DataGeneratorHostedService> _logger;
-    private readonly Random _random = new();
-    private readonly string[] _sensorTypes = { "Temperature", "Pressure", "Humidity", "Vibration" };
+    private readonly string[] _sensorTypes = ["Temperature", "Pressure", "Humidity", "Vibration"];
     private long _sequenceId = 10000;
 
     public DataGeneratorHostedService(ITelemetryQueueManager queueManager, ILogger<DataGeneratorHostedService> logger)
@@ -21,18 +20,23 @@ public class DataGeneratorHostedService : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             var nextId = Interlocked.Increment(ref _sequenceId);
+            
             var reading = new SensorReading
             {
                 Id = $"sr_{nextId}",
                 Timestamp = DateTime.UtcNow,
-                Value = Math.Round(_random.NextDouble() * 100, 3),
-                SensorType = _sensorTypes[_random.Next(_sensorTypes.Length)]
+                Value = Math.Round(Random.Shared.NextDouble() * 100, 3),
+                SensorType = _sensorTypes[Random.Shared.Next(_sensorTypes.Length)]
             };
 
-            if (_logger != null && _logger.IsEnabled(LogLevel.Information)) { _logger.LogInformation("Generated Sensor Reading: {Id} | Value: {Value}", reading.Id, reading.Value); }
+            LogReadingGenerated(reading.Id, reading.Value);
+
             _queueManager.Enqueue(reading);
 
             await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
         }
     }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Information, Message = "Generated Sensor Reading: {Id} | Value: {Value}")]
+    private partial void LogReadingGenerated(string id, double value);
 }

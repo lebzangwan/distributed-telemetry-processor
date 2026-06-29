@@ -6,14 +6,12 @@ echo "===================================================="
 echo "Starting Database Initialization Script..."
 echo "===================================================="
 
-# Loop variables
 max_attempts=30
 attempt=1
 db_ready=false
-
 TARGET_HOST="sql-edge"
 
-# Health check loop executing across the Docker network bridge
+# 1. Wait for SQL Server network layer to become responsive
 while [ "$attempt" -le "$max_attempts" ]; do
     echo "Testing SQL Server availability... (Attempt $attempt/$max_attempts...)"
 
@@ -24,8 +22,7 @@ while [ "$attempt" -le "$max_attempts" ]; do
     fi
 
     echo "SQL Server is still initializing..."
-
-    sleep 5
+    sleep 3
     attempt=$((attempt + 1))
 done
 
@@ -34,14 +31,14 @@ if [ "$db_ready" = false ]; then
     exit 1
 fi
 
-echo "Executing Database Schema Creation..."
+echo "Verifying database instance '${DB_NAME}'..."
+/opt/mssql-tools/bin/sqlcmd -S "$TARGET_HOST" -U sa -P "${DOCKER_DB_PASSWORD}" -d "master" -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '${DB_NAME}') CREATE DATABASE [${DB_NAME}];"
 
-/opt/mssql-tools/bin/sqlcmd -S "$TARGET_HOST" -U sa -P "${DOCKER_DB_PASSWORD}" << EOF
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '${DB_NAME}') CREATE DATABASE ${DB_NAME};
-EOF
+echo "Waiting 3 seconds for engine file registration..."
+sleep 3
 
-echo "Database '${DB_NAME}' verified. Injecting tables and stored procedures..."
-/opt/mssql-tools/bin/sqlcmd -S "$TARGET_HOST" -U sa -P "${DOCKER_DB_PASSWORD}" -d "${DB_NAME}" -i /app/Database.sql
+echo "Injecting schema tables and procedures from Database.sql..."
+/opt/mssql-tools/bin/sqlcmd -S "$TARGET_HOST" -U sa -P "${DOCKER_DB_PASSWORD}" -d "master" -v TargetDb="${DB_NAME}" -i /app/Database.sql
 
 echo "===================================================="
 echo "Database Layer Initialized Successfully!"

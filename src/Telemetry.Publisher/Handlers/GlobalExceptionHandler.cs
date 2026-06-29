@@ -8,10 +8,12 @@ using System.Net;
 public class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;
+    private readonly IWebHostEnvironment _env;
 
-    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
+    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IWebHostEnvironment env)
     {
         _logger = logger;
+        _env = env;
     }
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
@@ -25,7 +27,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             Status = (int)HttpStatusCode.InternalServerError,
             Type = exception.GetType().Name,
             Title = "An unexpected error occurred",
-            Detail = exception.Message,
+            Detail = _env.IsDevelopment() ? exception.Message : "A system error occured. Please check the traceId to investigate. ",
             Instance = $"{httpContext.Request.Method} {httpContext.Request.Path}"
         };
 

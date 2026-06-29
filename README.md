@@ -1,62 +1,41 @@
-# High-Throughput Telemetry Processor
+# High-Throughput Telemetry System
 
-This repository contains a decoupled, distributed telemetry processing architecture built using **.NET 10** and **Docker**. The system is engineered to ingest high-frequency sensor streams safely without data loss, utilizing an automated database spillover strategy to protect system memory under heavy load.
+A resilient, decoupled, and dual-layered telemetry processing pipeline built with .NET 10, ASP.NET Core Web API, Background Workers, and SQL Server (`azure-sql-edge`).
 
----
+## System Architecture Overview
 
-## Architecture Components
+The system is split into two independent services that communicate asynchronously to maximize processing throughput and eliminate data loss:
 
-* **Publisher (Web API):** Handles ingestion, maintains an in-memory concurrent queue, and automatically spills overflow records to SQL Server when thresholds are exceeded.
-* **Consumer (Background Worker):** A background daemon using `System.Threading.Channels` to decouple network pulling from intense mathematical processing.
-* **Database (SQL Server):** Fully automated relational persistence layer.
+1. **Publisher Service (API)**: Generates simulated telemetry data every 1 second. It holds data in an in-memory `ConcurrentQueue` and spills data to SQL Server if capacity thresholds (10 items) or age limits (5 seconds) are exceeded.
+2. **Consumer Service (Worker)**: Long-polls the Publisher API via an un-blocked background thread, offloads processing to a dedicated `System.Threading.Channels` pipeline, and saves calculated 5-point moving averages to the database.
 
----
+## Quick Start (Docker Compose)
 
-## Prerequisites
+The entire environment—including database initialization and table schemas—spins up automatically using Docker Compose.
 
-Before running the application, ensure you have the following installed on your machine:
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-* Operating System: macOS, Windows, or Linux
-
----
-
-## Quick Start Guide
-
-Follow these steps to initialize, build, and execute the entire ecosystem cleanly.
-
-### 1. Build and Launch the Ecosystem
-Open your terminal at the root of the project directory and execute the following combined command. This ensures all historical database caches are pruned and the fresh binaries compile cleanly:
-
-```bash
-docker-compose down -v && docker builder prune -f && docker-compose up --build
+### Prerequisites
+Ensure you have a `.env` file in your root folder with the following variables configured:
+```env
+DOCKER_DB_PASSWORD=YourSecureStrongPassword123!
+DB_NAME=TelemetryDb
+DB_USER=sa
+ASPNETCORE_ENVIRONMENT=Development
 ```
 
-### 2. Verify Database Auto-Setup
-The system uses a built-in script (`init-db.sh`) to automatically start the database without errors. Just check the startup console to confirm that the database is running and the setup is complete.
-
-### 3. View Live Execution Logs
-To isolate and watch the background worker continuously running calculations and streaming GUID-backed records to persistence in real time, open a separate terminal tab and run:
-
+### Spin Up the Application Stack
+Run the following command from the repository root:
 ```bash
-docker-compose logs -f consumer
+docker-compose up --build
 ```
 
-### 4. Check System Metrics
-You can query the Publisher's live management endpoint to view the depth of the memory queue and see how many items have spilled over to the database layer under stress:
+### Port Mapping & Endpoints
+* **Publisher API**: `http://localhost:5020`
+  * Get Next Reading: `GET /api/telemetry/next`
+  * System Statistics: `GET /api/telemetry/stats`
+  * Health Check: `GET /api/telemetry/health`
+* **Consumer Service**: Runs internally on port `5021` (polls the publisher automatically).
+* **SQL Server**: `localhost:1433`
 
-```bash
-curl http://localhost:5020/api/telemetry/stats
-```
-
-### 5. Stopping the System
-To gracefully stop all background threads, shut down the application containers, and clean up the virtual internal network safely, run:
-
-```bash
-docker-compose down
-```
-
-To stop the system and completely wipe the database clean (useful for a pristine reset before testing again), append the volume flag:
-
-```bash
-docker-compose down -v
-```
+### Watch logs to watch Publisher generates data and Consumer process it:
+* docker logs -f telemetry-publisher
+* docker logs -f telemetry-consumer

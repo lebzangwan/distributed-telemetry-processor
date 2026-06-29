@@ -24,6 +24,7 @@ services:
       - ./Database.sql:/app/Database.sql 
     environment:
       - DOCKER_DB_PASSWORD=${DOCKER_DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
     entrypoint: /bin/bash /app/init-db.sh
     depends_on:
       sql-edge:
@@ -60,8 +61,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
       - Telemetry__Publisher_HostAddress=http://publisher:8080
     depends_on:
-      db-initializer:
-        condition: service_completed_successfully
+      publisher:
+        condition: service_started
 
 volumes:
   mssql-data:

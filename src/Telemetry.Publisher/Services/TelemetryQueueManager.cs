@@ -29,16 +29,17 @@ public class TelemetryQueueManager : ITelemetryQueueManager
     {
         EvaluateSpillOverConditions();
 
+        if (_queue.TryDequeue(out var memoryNode))
+        {
+            return memoryNode.Reading;
+        }
+
         var dbItem = await _dbRepository.GetOldestPendingAsync();
         if (dbItem != null)
         {
             return dbItem;
         }
-
-        if (_queue.TryDequeue(out var memoryNode))
-        {
-            return memoryNode.Reading;
-        }
+        
         return null;
     }
     private void EvaluateSpillOverConditions()

@@ -10,19 +10,20 @@ public class DatabaseRepository : IDatabaseRepository
 
     public DatabaseRepository(IConfiguration configuration)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection") 
+        _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new ArgumentNullException(nameof(configuration));
     }
 
     public async Task SavePendingReadingAsync(SensorReading reading)
     {
         using var conn = new SqlConnection(_connectionString);
-        using var cmd = new SqlCommand("sp_SavePendingReading", conn);
+        using var cmd = new SqlCommand("dbo.sp_SavePendingReading", conn);
         cmd.CommandType = CommandType.StoredProcedure;
-        cmd.Parameters.AddWithValue("@Id", reading.Id);
-        cmd.Parameters.AddWithValue("@Timestamp", reading.Timestamp);
-        cmd.Parameters.AddWithValue("@Value", reading.Value);
-        cmd.Parameters.AddWithValue("@SensorType", reading.SensorType);
+
+        cmd.Parameters.Add("@Id", SqlDbType.VarChar, 50).Value = reading.Id;
+        cmd.Parameters.Add("@Timestamp", SqlDbType.DateTime2).Value = reading.Timestamp;
+        cmd.Parameters.Add("@Value", SqlDbType.Float).Value = reading.Value;
+        cmd.Parameters.Add("@SensorType", SqlDbType.VarChar, 50).Value = reading.SensorType;
 
         await conn.OpenAsync();
         await cmd.ExecuteNonQueryAsync();
@@ -31,7 +32,7 @@ public class DatabaseRepository : IDatabaseRepository
     public async Task<SensorReading?> GetOldestPendingAsync()
     {
         using var conn = new SqlConnection(_connectionString);
-        using var cmd = new SqlCommand("sp_GetOldestPending", conn);
+        using var cmd = new SqlCommand("dbo.sp_GetOldestPending", conn);
         cmd.CommandType = CommandType.StoredProcedure;
 
         await conn.OpenAsync();
